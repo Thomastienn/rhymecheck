@@ -44,10 +44,16 @@ def full_normalize_word(word: str) -> str:
 def filter_word(word: str) -> str:
     return "".join(filter(lambda c: c.isalpha(), word))
 
+def special_execption(word: str, i: int) -> bool:
+    if i-1 >=0 and full_normalize_word(word[i-1:i+1]).lower() == "ai":
+        return False
+    return True
+    
+
 def get_suffix(word: str) -> str:
     suffixes = set()
     for i in range(len(word)):
-        if full_normalize_word(word[i]).lower() in VOWELS:
+        if full_normalize_word(word[i]).lower() in VOWELS and special_execption(word, i):
             suffixes.add(word[i:].lower())
     return suffixes
 

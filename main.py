@@ -29,9 +29,9 @@ def print_style(text: str, color: Color, *args, **kwargs) -> None:
 
 def new_color() -> Color:
     if THEME == "LIGHT":
-        return _random_color(brightness_max=150)
+        return _random_color(brightness_min=DEFAULT_COLOR + 30, brightness_max=150)
     if THEME == "DARK":
-        return _random_color(brightness_min=150)
+        return _random_color(brightness_min=150, brightness_max=DEFAULT_COLOR + 30)
     raise ValueError(f"Unknown theme: {THEME}")
 
 
@@ -45,15 +45,24 @@ def filter_word(word: str) -> str:
     return "".join(filter(lambda c: c.isalpha(), word))
 
 def special_execption(word: str, i: int) -> bool:
-    if i-1 >=0 and full_normalize_word(word[i-1:i+1]).lower() == "ai":
+    if i-1 >=0 and word[i-1:i+1].lower() == "ai":
         return False
+    if i+2 <= len(word) and word[i:i+2].lower() == "eu" or \
+        i-2 >= 0 and word[i-2:i+1].lower() == "ieu":
+        return False
+    if i-1 >=0 and word[i-1:i+1].lower() == "gi":
+        return False
+    if i-1 >=0 and word[i-1:i+1].lower() == "qu":
+        return False
+
     return True
     
 
 def get_suffix(word: str) -> str:
     suffixes = set()
+    nor_word = full_normalize_word(word)
     for i in range(len(word)):
-        if full_normalize_word(word[i]).lower() in VOWELS and special_execption(word, i):
+        if nor_word[i].lower() in VOWELS and special_execption(nor_word, i):
             suffixes.add(word[i:].lower())
     return suffixes
 

@@ -20,7 +20,10 @@ class Color(BaseModel):
 class Word(BaseModel):
     original: str
     filtered: str
-    suffix: str
+    suffix: set[str]
     line: int
-    color: Color | None = None
+    color: Color = Color()
+
+    def rhyme(self, other: "Word") -> bool:
+        return len(self.suffix & other.suffix) > 0
 

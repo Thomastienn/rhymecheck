@@ -1,10 +1,15 @@
 import sys
 import random
 import unicodedata
+from pprint import pprint
 
 from config import THEME, VOWELS, DEFAULT_COLOR
 from structures import Word, Color
 
+
+def _is_default_color(color: Color) -> bool:
+    return color.r == DEFAULT_COLOR and color.g == DEFAULT_COLOR and color.b == DEFAULT_COLOR
+    
 def _brightness(r: int, g: int, b: int) -> float:
     return 0.2126*r + 0.7152*g + 0.0722*b
 
@@ -13,7 +18,7 @@ def _random_color(brightness_min: int = 0, brightness_max: int = 255) -> Color:
         r = random.randint(0, 255)
         g = random.randint(0, 255)
         b = random.randint(0, 255)
-        if r == g == b == DEFAULT_COLOR:
+        if r == g == b and DEFAULT_COLOR - 30 <= r <= DEFAULT_COLOR + 30:
             continue
         bness = _brightness(r, g, b)
         if brightness_min <= bness <= brightness_max:
@@ -30,7 +35,7 @@ def new_color() -> Color:
     raise ValueError(f"Unknown theme: {THEME}")
 
 
-def normalize_word(word: str) -> str:
+def full_normalize_word(word: str) -> str:
     normalized = unicodedata.normalize('NFD', word)
     normalized = "".join(c for c in normalized if unicodedata.category(c) != 'Mn')
     normalized = normalized.replace('đ', 'd').replace('Đ', 'D')
@@ -40,19 +45,24 @@ def filter_word(word: str) -> str:
     return "".join(filter(lambda c: c.isalpha(), word))
 
 def get_suffix(word: str) -> str:
+    suffixes = set()
     for i in range(len(word)):
-        if word[i].lower() in VOWELS:
-            return word[i:]
+        if full_normalize_word(word[i]).lower() in VOWELS:
+            suffixes.add(word[i:].lower())
+    return suffixes
 
-def find_rhyme(suffix: str, processed_lyrics: list[list[Word]]) -> Color:
+def find_rhyme(word: Word, current_lyrics: list[list[Word]]) -> Color:
     # Search current line and upwards in the lyrics for a rhyme with the same suffix
-    for line_number in range(len(processed_lyrics) - 1, -1, -1):
-        for word in processed_lyrics[line_number]:
-            word: Word
-            if word.suffix == suffix:
-                if word.color is None:
-                    word.color = new_color()
-                return word.color
+    THRESHOLD = 3  # Minimum length of the suffix to consider it a rhyme
+    n = len(current_lyrics)
+    for line_number in range(n-1, max(n-THRESHOLD-1, -1), -1):
+        for other in current_lyrics[line_number]:
+            other: Word
+            if word.rhyme(other):
+                if _is_default_color(other.color):
+                    other.color = new_color()
+
+                return other.color
 
     return Color()
 
@@ -62,17 +72,17 @@ def main():
     for line_number, line in enumerate(sys.stdin):
         lines = []
         for word in line.split():
-            new_word = normalize_word(filter_word(word))
-            if new_word:
-                suffix = get_suffix(new_word)
-                word_color = find_rhyme(suffix, processed_lyrics)
-                lines.append(Word(
-                    original=word,
-                    filtered=new_word,
-                    suffix=suffix,
-                    line=line_number,
-                    color=word_color
-                ))
+            suffix = get_suffix(filter_word(word))
+            word_obj = Word(
+                original=word,
+                filtered=full_normalize_word(filter_word(word)),
+                suffix=suffix,
+                line=line_number,
+            )
+            word_color = find_rhyme(word_obj, processed_lyrics + [lines])
+            word_obj.color = word_color
+
+            lines.append(word_obj)
 
         processed_lyrics.append(lines)
 
@@ -81,6 +91,8 @@ def main():
         for word in line:
             print_style(word.original, word.color, end=' ')
         print()
+
+    # pprint(processed_lyrics)
                 
     
 
